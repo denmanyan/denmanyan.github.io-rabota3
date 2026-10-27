@@ -1,0 +1,353 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag & Drop Стикеры</title>
+    <style>
+        /* --- ОБЩИЕ СТИЛИ --- */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        /* Панель добавления */
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        #stickerInput {
+            flex-grow: 1;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+        }
+
+            #stickerInput:focus {
+                border-color: #007bff;
+                box-shadow: 0 0 5px rgba(0,123,255,0.3);
+            }
+
+        #addBtn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: bold;
+        }
+
+            #addBtn:hover {
+                background-color: #0056b3;
+            }
+
+        /* Рабочая область (две колонки) */
+        .workspace {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            max-width: 1000px;
+            height: calc(100vh - 120px); /* Занимает оставшееся место */
+        }
+
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 15px;
+            background: #e9ecef;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+            .column-header h3 {
+                margin: 0;
+                font-size: 16px;
+                color: #495057;
+            }
+
+        /* Кнопка полной очистки */
+        .clear-btn {
+            background: none;
+            border: 2px solid #dc3545;
+            color: #dc3545;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 8px;
+            transition: all 0.2s;
+        }
+
+            .clear-btn:hover {
+                background: #dc3545;
+                color: white;
+            }
+
+        /* Области для стикеров */
+        .area {
+            flex-grow: 1;
+            position: relative; /* Важно для абсолютного позиционирования на борде */
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        /* Левая колонка (Пул) */
+        .sticker-pool {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            overflow-y: auto;
+            background-color: #f8f9fa;
+        }
+
+        /* Правая колонка (Борд) */
+        .board {
+            background-color: #f4f1ea; /* Цвет пробки */
+            background-image: radial-gradient(#e0dcd3 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* --- СТИКЕР --- */
+        .sticker {
+            width: 180px;
+            min-height: 120px;
+            background-color: #fff740;
+            box-shadow: 2px 4px 8px rgba(0,0,0,0.2);
+            padding: 10px;
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            font-size: 14px;
+            word-break: break-word;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            cursor: grab;
+            user-select: none;
+            border: 1px solid rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+        }
+
+            .sticker:active {
+                cursor: grabbing;
+                transform: scale(1.02);
+            }
+
+        /* Кнопка удаления внутри стикера */
+        .delete-sticker {
+            align-self: flex-end;
+            background: transparent;
+            border: none;
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+            padding: 0;
+            margin-top: 5px;
+        }
+
+            .delete-sticker:hover {
+                opacity: 1;
+            }
+
+        /* Стикеры на борде */
+        .board .sticker {
+            position: absolute;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Панель управления -->
+    <div class="controls">
+        <input type="text" id="stickerInput" placeholder="Введите текст стикера...">
+        <button id="addBtn">Добавить</button>
+    </div>
+
+    <div class="workspace">
+        <!-- ЛЕВАЯ КОЛОНКА -->
+        <div class="column">
+            <div class="column-header">
+                <h3>Поле со стикерами</h3>
+                <button class="clear-btn" id="clearPoolBtn" title="Очистить поле">✖</button>
+            </div>
+            <div class="area sticker-pool" id="stickerPool"></div>
+        </div>
+
+        <!-- ПРАВАЯ КОЛОНКА -->
+        <div class="column">
+            <div class="column-header">
+                <h3>Борд (рабочая область)</h3>
+                <button class="clear-btn" id="clearBoardBtn" title="Очистить борд">✖</button>
+            </div>
+            <div class="area board" id="board"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- Инициализация ---
+        const stickerInput = document.getElementById('stickerInput');
+        const addBtn = document.getElementById('addBtn');
+        const stickerPool = document.getElementById('stickerPool');
+        const board = document.getElementById('board');
+        const clearPoolBtn = document.getElementById('clearPoolBtn');
+        const clearBoardBtn = document.getElementById('clearBoardBtn');
+
+        let zIndexCounter = 1; // Счетчик для наложения стикеров
+        let draggedSticker = null; // Глобальная переменная для перетаскиваемого элемента
+
+        // --- 1. СОЗДАНИЕ СТИКЕРА ---
+        function addSticker() {
+            const text = stickerInput.value.trim();
+            if (!text) return;
+
+            const sticker = document.createElement('div');
+            sticker.classList.add('sticker');
+            sticker.draggable = true;
+
+            // Рандомный цвет
+            const colors = ['#fff740', '#ff7eb3', '#7afcff', '#b28dff', '#a8ff78'];
+            sticker.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+
+            const textNode = document.createElement('span');
+            textNode.textContent = text;
+
+            const delBtn = document.createElement('button');
+            delBtn.textContent = '✖';
+            delBtn.classList.add('delete-sticker');
+            delBtn.title = 'Удалить стикер';
+
+            sticker.appendChild(textNode);
+            sticker.appendChild(delBtn);
+
+            // Удаление стикера
+            delBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sticker.remove();
+            });
+
+            // --- События Drag and Drop для самого стикера ---
+            sticker.addEventListener('dragstart', (e) => {
+                draggedSticker = sticker;
+                e.dataTransfer.setData('text/plain', ''); // Для совместимости
+                setTimeout(() => sticker.style.opacity = '0.4', 0);
+            });
+
+            sticker.addEventListener('dragend', () => {
+                sticker.style.opacity = '1';
+                draggedSticker = null;
+            });
+
+            stickerPool.appendChild(sticker);
+
+            stickerInput.value = '';
+            stickerInput.focus();
+        }
+
+        // --- 2. НАСТРОЙКА ОБЛАСТЕЙ ДЛЯ СБРОСА (DROP) ---
+
+        // Левая колонка (Пул)
+        stickerPool.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Разрешаем сброс
+            if (draggedSticker) {
+                // Если стикер тащат с борда, возвращаем ему нормальное позиционирование
+                draggedSticker.style.position = 'static';
+            }
+        });
+
+        stickerPool.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (draggedSticker) {
+                stickerPool.appendChild(draggedSticker);
+            }
+        });
+
+        // Правая колонка (Борд)
+        board.addEventListener('dragover', (e) => {
+            e.preventDefault(); // Разрешаем сброс
+        });
+
+        board.addEventListener('drop', (e) => {
+            e.preventDefault();
+            if (!draggedSticker) return;
+
+            const boardRect = board.getBoundingClientRect();
+
+            // Вычисляем координаты мыши относительно борда
+            // Отнимаем половину ширины/высоты стикера, чтобы он центрировался по курсору
+            let x = e.clientX - boardRect.left - (draggedSticker.offsetWidth / 2);
+            let y = e.clientY - boardRect.top - (draggedSticker.offsetHeight / 2);
+
+            // Ограничение, чтобы стикер не улетел за края борда
+            const maxX = board.clientWidth - draggedSticker.offsetWidth;
+            const maxY = board.clientHeight - draggedSticker.offsetHeight;
+
+            x = Math.max(0, Math.min(x, maxX));
+            y = Math.max(0, Math.min(y, maxY));
+
+            draggedSticker.style.position = 'absolute';
+            draggedSticker.style.left = x + 'px';
+            draggedSticker.style.top = y + 'px';
+            draggedSticker.style.zIndex = zIndexCounter++;
+
+            board.appendChild(draggedSticker);
+        });
+
+        // Клик по стикеру на борде поднимает его наверх
+        board.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('sticker') || e.target.parentElement.classList.contains('sticker')) {
+                // Находим сам стикер (если кликнули по тексту или кнопке)
+                const targetSticker = e.target.closest('.sticker');
+                if (targetSticker) {
+                    targetSticker.style.zIndex = zIndexCounter++;
+                }
+            }
+        });
+
+        // --- 3. ОЧИСТКА ПОЛЕЙ ---
+        clearPoolBtn.addEventListener('click', () => {
+            if (confirm('Очистить Поле со стикерами?')) stickerPool.innerHTML = '';
+        });
+
+        clearBoardBtn.addEventListener('click', () => {
+            if (confirm('Очистить Борд?')) board.innerHTML = '';
+        });
+
+        // --- 4. ОБРАБОТЧИКИ СОБЫТИЙ ---
+        addBtn.addEventListener('click', addSticker);
+        stickerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') addSticker();
+        });
+    </script>
+</body>
+</html>
